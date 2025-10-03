@@ -12,7 +12,10 @@
     "paths": {
       "@/*": ["./*"],
       "@/app/": ["./app/*"],
-      "@/components/": ["./components/*"]
+      "@/classes/": ["./classes/*"],
+      "@/components/": ["./components/*"],
+      "@/hooks/": ["./hooks/*"],
+      "@/providers/": ["./providers/*"]
     },
     "plugins": [
       {

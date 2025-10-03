@@ -3,7 +3,7 @@
 import { ArrowRightIcon, BookOpenIcon, InformationCircleIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import HeroBackground from './HeroBackground';
+import HeroBackground from './background';
 
 export default function HeroSection() {
   return (
@@ -78,7 +78,7 @@ export default function HeroSection() {
 
           {/* Quick Try - Highlighted CTA */}
           <Link
-            href='/dashboard'
+            href='/clusters'
             className='flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary focus:ring-offset-2 sm:w-auto'
           >
             Quick Try
