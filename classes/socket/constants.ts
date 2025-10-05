@@ -1,0 +1,1 @@
+export const SOCKET_CONNECTION_TIME_OUT = 5000;

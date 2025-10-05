@@ -8,6 +8,7 @@ import { useAgentStore } from '@/stores/agent';
 import {
   ArrowLeftIcon,
   CheckIcon,
+  ChevronDownIcon,
   ClipboardIcon,
   MagnifyingGlassIcon,
   PencilIcon,
@@ -16,17 +17,29 @@ import {
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useState } from 'react';
-import CpuCard from '../custom/card/cpu';
-import MemoryCard from '../custom/card/memory';
-import NetworkChart from '../custom/chart/network';
-import ProcessesTable from '../custom/table/processes';
-import { StorageTable } from '../custom/table/storage';
+
+// charts
+import CpuChart from '@/components/custom/chart/cpu';
+import MemoryChart from '@/components/custom/chart/memory';
+import NetworkChart from '@/components/custom/chart/network';
+import ProcessesChart from '@/components/custom/chart/processes';
+import StorageChart from '@/components/custom/chart/storage';
 
 export default function ClusterDetail({ clusterId, clusterName }: { clusterId: string; clusterName: string }) {
   const { copiedId, handleCopy } = useCopy();
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { agents: allAgents, addAgent, updateAgent, removeAgent } = useAgentStore();
+  const [visibleMetrics, setVisibleMetrics] = useState({
+    cpu: true,
+    memory: true,
+    network: true,
+    storage: true,
+    processes: true,
+  });
+
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const { agents: allAgents, addAgent, updateAgent, removeAgent, addMetrics } = useAgentStore();
 
   const agents = allAgents.filter((c) => c.clusterId === clusterId);
 
@@ -36,13 +49,12 @@ export default function ClusterDetail({ clusterId, clusterName }: { clusterId: s
 
   useListenSocketEvent({
     preRun: () => {
-      console.log('join room');
       emit('handle-join', { clusterId });
     },
     event: 'metrics',
     callback: (data: EventMetricsResponse) => {
       agents.forEach((agent) => {
-        updateAgent(agent.id, { metrics: data });
+        addMetrics(agent.id, data);
       });
     },
     socketType: 'agent',
@@ -59,6 +71,10 @@ export default function ClusterDetail({ clusterId, clusterName }: { clusterId: s
 
   const handleNameChange = (id: string, newName: string) => {
     updateAgent(id, { name: newName });
+  };
+
+  const toggleMetricVisibility = (metric: keyof typeof visibleMetrics) => {
+    setVisibleMetrics((prev) => ({ ...prev, [metric]: !prev[metric] }));
   };
 
   // filter
@@ -111,15 +127,46 @@ export default function ClusterDetail({ clusterId, clusterName }: { clusterId: s
             Add Agent
           </button>
 
-          <div className='relative w-full sm:w-64'>
-            <MagnifyingGlassIcon className='w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2' />
-            <input
-              type='text'
-              placeholder='Search by name or ID...'
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className='w-full pl-10 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
-            />
+          <div className='flex items-center gap-3 w-full sm:w-auto'>
+            {/* Search bar */}
+            <div className='relative w-full sm:w-64'>
+              <MagnifyingGlassIcon className='w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2' />
+              <input
+                type='text'
+                placeholder='Search by name or ID...'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className='w-full pl-10 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+              />
+            </div>
+
+            {/* Dropdown */}
+            <div className='relative'>
+              <button
+                onClick={() => setShowDropdown((prev) => !prev)}
+                className='flex items-center gap-1 px-3 py-2 border rounded-lg text-sm bg-white hover:bg-gray-100'
+              >
+                Metrics <ChevronDownIcon className='w-4 h-4' />
+              </button>
+
+              {showDropdown && (
+                <div className='absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-md z-10 p-2'>
+                  {Object.keys(visibleMetrics).map((metricKey) => (
+                    <label
+                      key={metricKey}
+                      className='flex items-center gap-2 px-2 py-1 text-sm cursor-pointer hover:bg-gray-50 rounded'
+                    >
+                      <input
+                        type='checkbox'
+                        checked={visibleMetrics[metricKey as keyof typeof visibleMetrics]}
+                        onChange={() => toggleMetricVisibility(metricKey as keyof typeof visibleMetrics)}
+                      />
+                      <span className='capitalize'>{metricKey}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -185,23 +232,33 @@ export default function ClusterDetail({ clusterId, clusterName }: { clusterId: s
                   )}
                 </div>
 
-                {agent.metrics ? (
+                {agent.metricsHistory && agent.metricsHistory.length > 0 ? (
                   <div className='grid grid-cols-12 gap-4 w-full'>
-                    <div className='col-span-8'>
-                      <CpuCard cpu={agent.metrics.cpu} />
-                    </div>
-                    <div className='col-span-4'>
-                      <ProcessesTable processes={agent.metrics.topProcesses} />
-                    </div>
-                    <div className='col-span-12'>
-                      <NetworkChart network={agent.metrics.network} />
-                    </div>
-                    <div className='col-span-8'>
-                      <StorageTable storage={agent.metrics.storage} />
-                    </div>
-                    <div className='col-span-4'>
-                      <MemoryCard memory={agent.metrics.memory} />
-                    </div>
+                    {visibleMetrics.cpu && (
+                      <div className='col-span-4'>
+                        <CpuChart data={agent.metricsHistory} />
+                      </div>
+                    )}
+                    {visibleMetrics.processes && (
+                      <div className='col-span-4'>
+                        <ProcessesChart data={agent.metricsHistory} />
+                      </div>
+                    )}
+                    {visibleMetrics.network && (
+                      <div className='col-span-4'>
+                        <NetworkChart data={agent.metricsHistory} />
+                      </div>
+                    )}
+                    {visibleMetrics.storage && (
+                      <div className='col-span-4'>
+                        <StorageChart data={agent.metricsHistory} />
+                      </div>
+                    )}
+                    {visibleMetrics.memory && (
+                      <div className='col-span-4'>
+                        <MemoryChart data={agent.metricsHistory} />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className='text-gray-400 italic'>Waiting for metrics...</p>

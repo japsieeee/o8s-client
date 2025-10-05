@@ -25,8 +25,6 @@ function createSocketHandler(socket: SocketClass, socketType: SocketTypes) {
     socketInstance.connect();
 
     socketInstance.on('connect', () => {
-      console.log('connected to socket server: ', socketType);
-
       cb && cb();
     });
 
@@ -40,8 +38,6 @@ function createSocketHandler(socket: SocketClass, socketType: SocketTypes) {
   }
 
   function listen<T>(event: string, cb: (payload: T) => void) {
-    console.log('started listening to ' + event);
-
     socket.getSocketInstance().on(event, (payload: EventMetricsResponse) => {
       cb(payload as T);
     });

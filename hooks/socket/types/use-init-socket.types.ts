@@ -1,1 +1,1 @@
-export type SocketState = 'loading' | 'ready';
+export type SocketState = 'not-ready' | 'ready' | 'timeout';

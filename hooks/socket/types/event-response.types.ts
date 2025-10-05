@@ -1,4 +1,5 @@
 export interface EventMetricsResponse {
+  dateTime: string; // yyyy-MM-dd HH:mm:ss
   memory: {
     total: number;
     free: number;

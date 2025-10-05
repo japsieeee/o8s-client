@@ -18,9 +18,6 @@ export default function MainNavbar() {
           <Link href='/docs' className='hover:text-indigo-600 transition-colors'>
             Docs
           </Link>
-          <Link href='/pricing' className='hover:text-indigo-600 transition-colors'>
-            Pricing
-          </Link>
           <Link href='/about' className='hover:text-indigo-600 transition-colors'>
             About
           </Link>
@@ -32,7 +29,7 @@ export default function MainNavbar() {
             Log in
           </Link>
           <Link
-            href='/register'
+            href='/signup'
             className='px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors'
           >
             Sign up

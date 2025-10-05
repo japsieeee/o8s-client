@@ -16,15 +16,15 @@ export default function ClusterLanding() {
   };
 
   return (
-    <div className='min-h-screen bg-gray-50 text-gray-900 font-sans'>
+    <div className='bg-gray-50 text-gray-900 font-sans flex flex-col overflow-x-hidden'>
       {/* Header */}
-      <header className='max-w-5xl mx-auto px-6 py-10'>
+      <header className='max-w-5xl w-full mx-auto px-6 pt-10 pb-6 flex-shrink-0'>
         <h1 className='text-3xl font-heading font-bold flex items-center gap-2'>🚀 Monitoring Clusters</h1>
         <p className='mt-2 text-gray-600'>Organize and manage your agents inside clusters</p>
       </header>
 
       {/* Main */}
-      <main className='max-w-5xl mx-auto px-6'>
+      <main className='flex-grow max-w-5xl w-full mx-auto px-6 pb-10'>
         <button
           onClick={addCluster}
           className='px-5 py-2.5 bg-indigo-600 text-white font-medium rounded-lg shadow hover:bg-indigo-700 transition-colors'
