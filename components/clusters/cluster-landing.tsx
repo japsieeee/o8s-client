@@ -2,17 +2,29 @@
 
 import useCopy from '@/hooks/utils/useCopy';
 import { useClusterStore } from '@/stores/cluster';
-import { CheckIcon, ClipboardIcon, PencilSquareIcon, ServerIcon, UsersIcon } from '@heroicons/react/24/outline';
+import {
+  CheckIcon,
+  ClipboardIcon,
+  PencilSquareIcon,
+  ServerIcon,
+  TrashIcon,
+  UsersIcon,
+} from '@heroicons/react/24/outline';
 import Link from 'next/link';
 
 export default function ClusterLanding() {
   const { copiedId, handleCopy } = useCopy();
-  const { clusters, addCluster, updateCluster, toggleEdit } = useClusterStore();
+  const { clusters, addCluster, updateCluster, toggleEdit, removeCluster } = useClusterStore();
 
   const handleKeyDown = (id: string, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === 'Escape') {
       toggleEdit(id, false);
     }
+  };
+
+  const handleRemove = (id: string, name: string) => {
+    const confirmDelete = window.confirm(`Are you sure you want to remove the cluster "${name}"?`);
+    if (confirmDelete) removeCluster(id);
   };
 
   return (
@@ -41,6 +53,7 @@ export default function ClusterLanding() {
                 key={cluster.id}
                 className='block rounded-xl bg-white p-6 shadow-sm hover:shadow-md transition-shadow'
               >
+                {/* Top Section: Name + Edit/Delete */}
                 <div className='flex items-center justify-between mb-3'>
                   <div className='flex items-center gap-3'>
                     <div className='p-2 rounded-lg bg-indigo-100 text-indigo-600'>
@@ -66,15 +79,27 @@ export default function ClusterLanding() {
                       </h2>
                     )}
                   </div>
-                  <button
-                    onClick={() => toggleEdit(cluster.id, !cluster.isEditing)}
-                    className='text-gray-400 hover:text-gray-600'
-                  >
-                    <PencilSquareIcon className='w-5 h-5' />
-                  </button>
+
+                  <div className='flex items-center gap-2'>
+                    {/* Edit */}
+                    <button
+                      onClick={() => toggleEdit(cluster.id, !cluster.isEditing)}
+                      className='text-gray-400 hover:text-gray-600'
+                    >
+                      <PencilSquareIcon className='w-5 h-5' />
+                    </button>
+
+                    {/* Delete */}
+                    <button
+                      onClick={() => handleRemove(cluster.id, cluster.name)}
+                      className='text-gray-400 hover:text-red-500 transition-colors'
+                    >
+                      <TrashIcon className='w-5 h-5' />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Cluster ID with Copy Button */}
+                {/* Cluster ID + Copy */}
                 <div className='flex items-center justify-between text-xs text-gray-500 mb-2'>
                   <span>ID: {cluster.id.slice(0, 8)}...</span>
                   <button
@@ -95,6 +120,7 @@ export default function ClusterLanding() {
                   </button>
                 </div>
 
+                {/* Manage Agents Link */}
                 <Link
                   href={{
                     pathname: `/clusters/${cluster.id}`,
