@@ -1,5 +1,7 @@
 export interface EventMetricsResponse {
   dateTime: string; // yyyy-MM-dd HH:mm:ss
+  agentId: string;
+  clusterId: string;
   memory: {
     total: number;
     free: number;

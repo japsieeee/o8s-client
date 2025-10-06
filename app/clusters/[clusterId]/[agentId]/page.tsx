@@ -5,5 +5,5 @@ interface Props {
 }
 
 export default function AgentPage({ params }: Props) {
-  return <AgentDetail clusterId={params.clusterId} agentId={params.agentId} />;
+  return <AgentDetail />;
 }
