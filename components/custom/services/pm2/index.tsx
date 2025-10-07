@@ -96,7 +96,6 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
     event: pm2ActionResultEvent,
     socketType: 'agent',
     callback: (payload: any) => {
-      console.log('payload', payload);
       setPm2Services((prev) => {
         return prev.map((v) => {
           if (v.name === payload.serviceName && payload.action === 'start') {
@@ -196,6 +195,7 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
                       onClick={() => handleServiceAction(service.name, 'stop')}
                     />
                     <PM2DefaultButton
+                      disabled
                       loading={service.isDeploying}
                       icon={<RocketLaunchIcon className='w-4 h-4' />}
                       label='Deploy'
