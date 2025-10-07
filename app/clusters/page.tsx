@@ -1,11 +1,11 @@
-import ClusterLanding from '@/components/clusters/cluster-landing';
 import MainNavbar from '@/components/nav/main';
+import ClusterOverview from '@/features/clusters/overview';
 
 export default function ClustersPage() {
   return (
     <>
       <MainNavbar />
-      <ClusterLanding />
+      <ClusterOverview />
     </>
   );
 }

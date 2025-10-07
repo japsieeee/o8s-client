@@ -1,26 +1,26 @@
 'use client';
 
+import CpuChart from '@/components/custom/chart/cpu';
+import MemoryChart from '@/components/custom/chart/memory';
+import NetworkChart from '@/components/custom/chart/network';
+import ProcessesChart from '@/components/custom/chart/processes';
+import StorageChart from '@/components/custom/chart/storage';
 import { EventMetricsResponse } from '@/hooks/socket/types/event-response.types';
 import useListenSocketEvent from '@/hooks/socket/useListenSocketEvent';
 import useCopy from '@/hooks/utils/useCopy';
 import { Agent, useAgentStore } from '@/stores/agent';
 import { CheckIcon, ClipboardIcon, PencilIcon } from '@heroicons/react/24/outline';
-import CpuChart from '../custom/chart/cpu';
-import MemoryChart from '../custom/chart/memory';
-import NetworkChart from '../custom/chart/network';
-import ProcessesChart from '../custom/chart/processes';
-import StorageChart from '../custom/chart/storage';
-import { VisibleMetrics } from './types/cluster-types';
+import { useState } from 'react';
+import { IVisibleMetrics } from '../clusters/types';
 
-export default function AgentOverview({ agent, visibleMetrics }: { agent: Agent; visibleMetrics: VisibleMetrics }) {
+export default function AgentOverview({ agent, visibleMetrics }: { agent: Agent; visibleMetrics: IVisibleMetrics }) {
   const { copiedId, handleCopy } = useCopy();
   const { updateAgent, removeAgent, addMetrics } = useAgentStore();
+  const [showAll, setShowAll] = useState(false);
 
   useListenSocketEvent({
     event: `metrics:${agent.clusterId}:${agent.id}`,
     callback: (data: EventMetricsResponse) => {
-      console.log('data: ', data);
-
       addMetrics(agent.id, data);
     },
     socketType: 'agent',
@@ -35,7 +35,8 @@ export default function AgentOverview({ agent, visibleMetrics }: { agent: Agent;
   };
 
   return (
-    <div key={agent.id} className='bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6'>
+    <>
+      {/* Header */}
       <div className='flex items-center justify-between mb-4'>
         {agent.editing ? (
           <div className='flex items-center gap-2 w-full'>
@@ -89,37 +90,57 @@ export default function AgentOverview({ agent, visibleMetrics }: { agent: Agent;
         )}
       </div>
 
+      {/* Metrics Section */}
       {agent.metricsHistory && agent.metricsHistory.length > 0 ? (
-        <div className='grid grid-cols-12 gap-4 w-full'>
-          {visibleMetrics.cpu && (
-            <div className='col-span-4'>
-              <CpuChart data={agent.metricsHistory} />
-            </div>
-          )}
-          {visibleMetrics.processes && (
-            <div className='col-span-4'>
-              <ProcessesChart data={agent.metricsHistory} />
-            </div>
-          )}
-          {visibleMetrics.network && (
-            <div className='col-span-4'>
-              <NetworkChart data={agent.metricsHistory} />
-            </div>
-          )}
-          {visibleMetrics.storage && (
-            <div className='col-span-4'>
-              <StorageChart data={agent.metricsHistory} />
-            </div>
-          )}
-          {visibleMetrics.memory && (
-            <div className='col-span-4'>
-              <MemoryChart data={agent.metricsHistory} />
-            </div>
-          )}
-        </div>
+        <>
+          <div className='grid grid-cols-12 gap-4 w-full'>
+            {/* Always show first 3 metrics */}
+            {visibleMetrics.cpu && (
+              <div className='col-span-4'>
+                <CpuChart data={agent.metricsHistory} />
+              </div>
+            )}
+            {visibleMetrics.memory && (
+              <div className='col-span-4'>
+                <MemoryChart data={agent.metricsHistory} />
+              </div>
+            )}
+            {visibleMetrics.storage && (
+              <div className='col-span-4'>
+                <StorageChart data={agent.metricsHistory} />
+              </div>
+            )}
+
+            {/* Conditionally show extra metrics */}
+            {showAll && (
+              <>
+                {visibleMetrics.processes && (
+                  <div className='col-span-4'>
+                    <ProcessesChart data={agent.metricsHistory} />
+                  </div>
+                )}
+                {visibleMetrics.network && (
+                  <div className='col-span-4'>
+                    <NetworkChart data={agent.metricsHistory} />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Show more / less button */}
+          <div className='flex justify-center mt-4'>
+            <button
+              onClick={() => setShowAll((prev) => !prev)}
+              className='text-sm text-blue-600 hover:text-blue-800 transition'
+            >
+              {showAll ? 'Show Less Metrics ▲' : 'Show More Metrics ▼'}
+            </button>
+          </div>
+        </>
       ) : (
         <p className='text-gray-400 italic'>Waiting for metrics...</p>
       )}
-    </div>
+    </>
   );
 }

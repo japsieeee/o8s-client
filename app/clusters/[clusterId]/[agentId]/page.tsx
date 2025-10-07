@@ -1,4 +1,4 @@
-import AgentDetail from '@/components/clusters/agent-detail';
+import AgentDetail from '@/features/agent/detail';
 
 interface Props {
   params: { clusterId: string; agentId: string };

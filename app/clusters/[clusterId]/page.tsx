@@ -1,5 +1,5 @@
-import ClusterDetail from '@/components/clusters/cluster-detail';
 import MainNavbar from '@/components/nav/main';
+import MainClusterDetail from '@/features/clusters/main-cluster-detail';
 
 interface Props {
   params: Promise<{ clusterId: string }>;
@@ -15,7 +15,7 @@ export default async function ClusterPage({ params, searchParams }: Props) {
   return (
     <>
       <MainNavbar />
-      <ClusterDetail clusterId={clusterId} clusterName={clusterName} />
+      <MainClusterDetail clusterId={clusterId} clusterName={clusterName} />
     </>
   );
 }
