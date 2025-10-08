@@ -5,6 +5,7 @@ import useSocket from '@/hooks/socket/useSocket';
 import { Agent } from '@/stores/agent';
 import {
   ArrowPathIcon,
+  ArrowUturnLeftIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   CloudArrowUpIcon,
@@ -27,6 +28,7 @@ const ACTION_FLAGS = {
   restart: 'isRestarting',
   start: 'isStarting',
   stop: 'isStopping',
+  rollback: 'isRollbacking',
 } as const;
 
 const STATUS_MAP: Record<keyof typeof ACTION_FLAGS, string> = {
@@ -34,6 +36,7 @@ const STATUS_MAP: Record<keyof typeof ACTION_FLAGS, string> = {
   restart: 'online',
   start: 'online',
   stop: 'stopped',
+  rollback: 'online',
 };
 
 export default function PM2Service({ agent }: PM2ServiceProps) {
@@ -43,7 +46,6 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
   const [configText, setConfigText] = useState('// Loading ecosystem.config.js...');
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState<number | null>(null);
 
@@ -55,11 +57,7 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
   }, [agent.metricsHistory, expanded]);
 
   const pm2Services = useMemo<IPM2Service[]>(
-    () =>
-      liveServices.map((svc) => ({
-        ...svc,
-        ...serviceStates[svc.name],
-      })) as IPM2Service[],
+    () => liveServices.map((svc) => ({ ...svc, ...serviceStates[svc.name] })) as IPM2Service[],
     [liveServices, serviceStates],
   );
 
@@ -78,23 +76,17 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
     emit(`reboot:${agent.clusterId}:${agent.id}`, '');
   };
 
-  const handleToggle = () => setExpanded((prev) => !prev);
-
   useListenSocketEvent({
     event: `pm2-action-result:${agent.clusterId}:${agent.id}`,
     socketType: 'agent',
     callback: useCallback((payload: any) => {
       const { serviceName, action } = payload;
       const flag = ACTION_FLAGS[action as keyof typeof ACTION_FLAGS];
-      const updatedStatus = STATUS_MAP[action as keyof typeof ACTION_FLAGS] || '';
+      const updatedStatus = STATUS_MAP[action as keyof typeof STATUS_MAP] || '';
 
       setServiceStates((prev) => ({
         ...prev,
-        [serviceName]: {
-          ...prev[serviceName],
-          [flag]: false,
-          status: updatedStatus,
-        },
+        [serviceName]: { ...prev[serviceName], [flag]: false, status: updatedStatus },
       }));
     }, []),
   });
@@ -113,7 +105,6 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
   const handleSaveConfig = () => {
     setIsSaving(true);
     setSaveMessage(null);
-
     emit('pm2-action', {
       configFile: configText,
       clusterId: agent.clusterId,
@@ -121,7 +112,6 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
       action: 'save-config',
       serviceName: '',
     });
-
     setTimeout(() => {
       setIsSaving(false);
       setSaveMessage('✅ Config sent to backend');
@@ -133,7 +123,7 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
     <div className='w-full'>
       {/* Header */}
       <div
-        onClick={handleToggle}
+        onClick={() => setExpanded((p) => !p)}
         className='flex items-center justify-between w-full cursor-pointer rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition'
       >
         <span className='flex items-center gap-2 font-medium'>
@@ -158,11 +148,11 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
         style={{ maxHeight: expanded ? `${contentHeight ?? 0}px` : '0px' }}
       >
         <div ref={contentRef} className='space-y-4'>
-          {/* PM2 Service List */}
+          {/* Service List */}
           {pm2Services.length ? (
             <div className='space-y-2'>
               {pm2Services.map((svc) => {
-                const { name, status, isDeploying, isRestarting, isStarting, isStopping } = svc;
+                const { name, status, isDeploying, isRestarting, isStarting, isStopping, isRollbacking } = svc;
 
                 const renderStatus =
                   status === 'online'
@@ -189,10 +179,11 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
                   >
                     <div className='flex flex-col'>
                       <span className='text-sm font-medium text-gray-800'>{name}</span>
-                      <span className={`text-xs transition-colors ${statusColor}`}>{renderStatus}</span>
+                      <span className={`text-xs ${statusColor}`}>{renderStatus}</span>
                     </div>
 
                     <div className='flex gap-1.5'>
+                      {/* Restart */}
                       <PM2DefaultButton
                         icon={
                           isRestarting ? (
@@ -202,10 +193,11 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
                           )
                         }
                         label={isRestarting ? 'Restarting...' : 'Restart'}
-                        disabled={isRestarting}
+                        disabled={isRestarting || status === 'stopped'}
                         onClick={() => handleServiceAction(name, 'restart')}
                       />
 
+                      {/* Start */}
                       <PM2DefaultButton
                         icon={
                           isStarting ? (
@@ -215,10 +207,11 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
                           )
                         }
                         label={isStarting ? 'Starting...' : 'Start'}
-                        disabled={isStarting}
+                        disabled={isStarting || status === 'online'}
                         onClick={() => handleServiceAction(name, 'start')}
                       />
 
+                      {/* Stop */}
                       <PM2DefaultButton
                         icon={
                           isStopping ? (
@@ -228,10 +221,11 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
                           )
                         }
                         label={isStopping ? 'Stopping...' : 'Stop'}
-                        disabled={isStopping}
+                        disabled={isStopping || status === 'stopped'}
                         onClick={() => handleServiceAction(name, 'stop')}
                       />
 
+                      {/* Deploy */}
                       <PM2DefaultButton
                         icon={
                           isDeploying ? (
@@ -243,6 +237,20 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
                         label={isDeploying ? 'Deploying...' : 'Deploy'}
                         disabled={isDeploying}
                         onClick={() => handleServiceAction(name, 'deploy')}
+                      />
+
+                      {/* Rollback */}
+                      <PM2DefaultButton
+                        icon={
+                          isRollbacking ? (
+                            <ArrowPathIcon className='w-4 h-4 animate-spin text-gray-400' />
+                          ) : (
+                            <ArrowUturnLeftIcon className='w-4 h-4' />
+                          )
+                        }
+                        label={isRollbacking ? 'Rolling back...' : 'Rollback'}
+                        disabled={isRollbacking}
+                        onClick={() => handleServiceAction(name, 'rollback')}
                       />
                     </div>
                   </div>

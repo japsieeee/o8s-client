@@ -3,6 +3,7 @@ export interface IPM2Service {
   status: string;
 
   isRestarting: boolean;
+  isRollbacking: boolean;
   isStarting: boolean;
   isStopping: boolean;
   isDeploying: boolean;
