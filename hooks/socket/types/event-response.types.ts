@@ -38,13 +38,16 @@ export interface EventMetricsResponse {
    * Undefined if PM2 is not installed or not running.
    */
   pm2Services?: {
-    name: string;
-    pid: number | null;
-    status: 'online' | 'stopped' | 'errored' | 'unknown';
-    cpu: number;
-    memory: number;
-    uptime: number;
-    restarts: number;
-    version?: string;
-  }[];
+    configFile: string;
+    services: {
+      name: string;
+      pid: number | null;
+      status: 'online' | 'stopped' | 'errored' | 'unknown';
+      cpu: number;
+      memory: number;
+      uptime: number;
+      restarts: number;
+      version?: string;
+    }[];
+  };
 }

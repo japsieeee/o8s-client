@@ -29,7 +29,7 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
 
   const { emit } = useSocket({ socketType: 'agent' });
 
-  // --- Dynamic height for expand/collapse
+  // --- Dynamic height
   useEffect(() => {
     if (contentRef.current) setContentHeight(contentRef.current.scrollHeight);
   }, [agent.metricsHistory, expanded]);
@@ -40,65 +40,32 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
     return agent.metricsHistory[agent.metricsHistory.length - 1];
   }, [agent.metricsHistory]);
 
-  // --- PM2 metrics from agent
-  const liveServices: Record<string, string> = useMemo(() => {
-    const list: Record<string, string> = {};
-    (latestMetrics?.pm2Services || []).forEach((svc: any) => {
-      list[svc.name] = svc.status;
-    });
-    return list;
-  }, [latestMetrics]);
-
-  // --- Config editor
-  const [configText, setConfigText] = useState('// Paste or edit your ecosystem.config.js here');
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
-
-  // 🧩 Parse service names from config file text
-  const parsedConfigServices = useMemo(() => {
-    try {
-      // Very basic JS parser using regex (safe for UI display)
-      const matches = configText.match(/name:\s*["'`](.*?)["'`]/g);
-      if (!matches) return [];
-      return matches.map((m) => m.split(/["'`]/)[1]).filter(Boolean);
-    } catch {
-      return [];
-    }
-  }, [configText]);
-
-  // --- Merge config-defined services with live status
+  // --- Build PM2 services from metricsHistory
   const pm2Services = useMemo<IPM2Service[]>(() => {
-    return parsedConfigServices.map((name) => {
-      const liveStatus = liveServices[name];
-      let status: string;
-
-      if (!liveStatus) status = 'not-detected';
-      else if (liveStatus === 'online') status = 'online';
-      else if (liveStatus === 'stopped') status = 'stopped';
-      else status = 'error';
-
-      return {
-        name,
-        status,
-        isDeploying: false,
-        isRestarting: false,
-        isStarting: false,
-        isStopping: false,
-      };
-    });
-  }, [parsedConfigServices, liveServices]);
+    const liveList = latestMetrics?.pm2Services?.services || [];
+    return liveList.map((svc: any) => ({
+      name: svc.name,
+      status: svc.status,
+      isDeploying: false,
+      isRestarting: false,
+      isStarting: false,
+      isStopping: false,
+    }));
+  }, [latestMetrics]);
 
   // --- Toggle expand
   const handleToggle = () => setExpanded((prev) => !prev);
 
   // --- Reboot Agent
   const handleAgentReboot = () => {
-    const rebootEvent = `reboot:${agent.clusterId}:${agent.id}`;
-    emit(rebootEvent, '');
+    emit(`reboot:${agent.clusterId}:${agent.id}`, '');
   };
 
-  // --- Service action handlers
-  const handleServiceAction = (serviceName: string, action: 'restart' | 'start' | 'stop' | 'deploy') => {
+  // --- PM2 actions
+  const handleServiceAction = (
+    serviceName: string,
+    action: 'restart' | 'start' | 'stop' | 'deploy' | 'save-config',
+  ) => {
     emit('pm2-action', {
       clusterId: agent.clusterId,
       agentId: agent.id,
@@ -107,26 +74,16 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
     });
   };
 
-  // --- Listen for PM2 action results
-  const pm2ActionResultEvent = `pm2-action-result:${agent.clusterId}:${agent.id}`;
-  useListenSocketEvent({
-    event: pm2ActionResultEvent,
-    socketType: 'agent',
-    callback: (payload: any) => {
-      console.log('PM2 action result:', payload);
-    },
-  });
-
-  // --- Save Config
   const handleSaveConfig = () => {
     setIsSaving(true);
     setSaveMessage(null);
 
-    emit('updateEcosystemConfig', {
+    emit('pm2-action', {
+      configFile: configText, // 💾 Pass actual textarea content
       clusterId: agent.clusterId,
       agentId: agent.id,
-      filename: 'ecosystem.config.js',
-      content: configText,
+      action: 'save-config',
+      serviceName: '',
     });
 
     setTimeout(() => {
@@ -135,6 +92,33 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
       setTimeout(() => setSaveMessage(null), 3000);
     }, 1500);
   };
+
+  // --- Listen for PM2 action results
+  useListenSocketEvent({
+    event: `pm2-action-result:${agent.clusterId}:${agent.id}`,
+    socketType: 'agent',
+    callback: (payload: any) => {
+      console.log('PM2 action result:', payload);
+    },
+  });
+
+  // --- Config editing
+  const [configText, setConfigText] = useState('// Loading ecosystem.config.js...');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  // 🧠 Load real config text when metrics update
+  useEffect(() => {
+    const rawConfig = latestMetrics?.pm2Services?.configFile;
+    if (rawConfig) {
+      try {
+        const parsed = JSON.parse(rawConfig); // unescape from backend
+        setConfigText(parsed);
+      } catch (err) {
+        console.warn('⚠️ Failed to parse config file string:', err);
+      }
+    }
+  }, [latestMetrics]);
 
   return (
     <div className='w-full'>
@@ -169,7 +153,7 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
         }}
       >
         <div ref={contentRef} className='space-y-4'>
-          {/* PM2 Service List */}
+          {/* --- PM2 Service List --- */}
           {pm2Services.length > 0 ? (
             <div className='space-y-2'>
               {pm2Services.map((service) => (
@@ -185,18 +169,18 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
                           ? 'text-green-600'
                           : service.status === 'stopped'
                           ? 'text-gray-500 italic'
-                          : service.status === 'not-detected'
-                          ? 'text-yellow-500 italic'
-                          : 'text-red-500'
+                          : service.status === 'errored'
+                          ? 'text-red-500'
+                          : 'text-yellow-500 italic'
                       }`}
                     >
                       {service.status === 'online'
                         ? 'Running'
                         : service.status === 'stopped'
                         ? 'Stopped'
-                        : service.status === 'not-detected'
-                        ? 'Not Detected'
-                        : 'Error'}
+                        : service.status === 'errored'
+                        ? 'Error'
+                        : 'Not Detected'}
                     </span>
                   </div>
 
@@ -227,7 +211,7 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
             </div>
           ) : (
             <div className='px-4 py-3 text-xs text-gray-400 text-center border border-dashed border-gray-200 rounded-md'>
-              No services detected in config
+              No active PM2 services reported by agent
             </div>
           )}
 
