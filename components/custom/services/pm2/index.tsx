@@ -17,7 +17,7 @@ import {
 import { motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PM2DefaultButton from './components/button/default';
-import { IPM2Service } from './types';
+import { IEventResponsePM2ActionResult, IPM2Service } from './types';
 
 interface PM2ServiceProps {
   agent: Agent;
@@ -79,15 +79,20 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
   useListenSocketEvent({
     event: `pm2-action-result:${agent.clusterId}:${agent.id}`,
     socketType: 'agent',
-    callback: useCallback((payload: any) => {
-      const { serviceName, action } = payload;
-      const flag = ACTION_FLAGS[action as keyof typeof ACTION_FLAGS];
-      const updatedStatus = STATUS_MAP[action as keyof typeof STATUS_MAP] || '';
+    callback: useCallback((payload: IEventResponsePM2ActionResult) => {
+      console.log(payload);
 
-      setServiceStates((prev) => ({
-        ...prev,
-        [serviceName]: { ...prev[serviceName], [flag]: false, status: updatedStatus },
-      }));
+      const { serviceName, action, success } = payload;
+
+      if (success) {
+        const flag = ACTION_FLAGS[action as keyof typeof ACTION_FLAGS];
+        const updatedStatus = STATUS_MAP[action as keyof typeof STATUS_MAP] || '';
+
+        setServiceStates((prev) => ({
+          ...prev,
+          [serviceName]: { ...prev[serviceName], [flag]: false, status: updatedStatus },
+        }));
+      }
     }, []),
   });
 

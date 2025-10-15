@@ -8,3 +8,13 @@ export interface IPM2Service {
   isStopping: boolean;
   isDeploying: boolean;
 }
+
+export type IEventResponsePM2ActionResult = {
+  action: string;
+  agentId: string;
+  clusterId: string;
+  output: string;
+  serviceName: string;
+  success: boolean;
+  timestamp: string;
+};
