@@ -29,11 +29,12 @@ export default function MainClusterDetail({ clusterId, clusterName }: IMainClust
 
   const filteredAgents = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return agents;
+    if (!query) return agents.filter((agent) => agent.clusterId === clusterId);
+
     return agents.filter(
       (agent) =>
-        agent.name?.toLowerCase().includes(query) ||
-        (agent.id?.toLowerCase().includes(query) && agent.clusterId === clusterId),
+        (agent.name?.toLowerCase().includes(query) || agent.id?.toLowerCase().includes(query)) &&
+        agent.clusterId === clusterId,
     );
   }, [agents, searchQuery, clusterId]);
 

@@ -19,7 +19,7 @@ export default function ImportAgentButton() {
     if (!clusterId || !agentId) return;
 
     // Create cluster
-    addCluster(); // This will create a new cluster with a generated name
+    addCluster(clusterId); // This will create a new cluster with a generated name
     const finalClusterId = clusterId; // Use the user-provided clusterId
 
     // Add agent with exact agentId
