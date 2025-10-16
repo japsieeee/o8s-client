@@ -14,9 +14,10 @@ export interface Agent {
 interface AgentState {
   agents: Agent[];
 
-  addAgent: (clusterId: string, name?: string) => void;
+  addAgent: (clusterId: string, agentId?: string, name?: string) => void;
   updateAgent: (id: string, updates: Partial<Agent>) => void;
   removeAgent: (id: string) => void;
+  listAgentIdsByCluster: (clusterId: string) => string[];
 
   /** Append a new metric entry to the agent’s history */
   addMetrics: (id: string, metric: EventMetricsResponse) => void;
@@ -30,16 +31,22 @@ interface AgentState {
 
 export const useAgentStore = create<AgentState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       agents: [],
       metricsHistory: [],
 
-      addAgent: (clusterId, name) =>
+      listAgentIdsByCluster: (clusterId) => {
+        return get()
+          .agents.filter((v) => v.clusterId === clusterId)
+          .map((v) => v.id);
+      },
+
+      addAgent: (clusterId: string, agentId?: string, name?: string) =>
         set((state) => ({
           agents: [
             ...state.agents,
             {
-              id: uuidv4(),
+              id: agentId ?? uuidv4(), // use passed agentId if provided
               clusterId,
               name: name ?? `Agent-${state.agents.length + 1}`,
               editing: false,

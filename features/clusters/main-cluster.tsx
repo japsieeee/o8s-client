@@ -6,6 +6,7 @@ import Link from 'next/link';
 import CopyClusterIdButton from './components/copy-cluster-id';
 import CreateClusterButton from './components/create-cluster';
 import EditClusterNameButton from './components/edit-cluster-name';
+import ImportAgentButton from './components/import-agent';
 import ClusterNameInput from './components/input-cluster-name';
 import RemoveClusterButton from './components/remove-cluster';
 
@@ -14,7 +15,10 @@ export default function MainCluster() {
 
   return (
     <main className='flex-grow max-w-5xl w-full mx-auto px-6 pb-10'>
-      <CreateClusterButton />
+      <div className='flex items-center gap-x-2'>
+        <ImportAgentButton />
+        <CreateClusterButton />
+      </div>
 
       {clusters.length === 0 ? (
         <p className='mt-10 text-gray-500 italic'>No clusters yet. Create one to get started.</p>

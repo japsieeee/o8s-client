@@ -10,7 +10,7 @@ export interface Cluster {
 
 interface ClusterState {
   clusters: Cluster[];
-  addCluster: () => void;
+  addCluster: (customId?: string) => void;
   updateCluster: (id: string, newName: string) => void;
   removeCluster: (id: string) => void;
   toggleEdit: (id: string, isEditing: boolean) => void;
@@ -20,10 +20,14 @@ export const useClusterStore = create<ClusterState>()(
   persist(
     (set) => ({
       clusters: [],
-      addCluster: () =>
+      addCluster: (customId?: string) =>
         set((state) => ({
-          clusters: [...state.clusters, { id: uuidv4(), name: `Cluster-${uuidv4().slice(0, 6)}` }],
+          clusters: [
+            ...state.clusters,
+            { id: customId ?? uuidv4(), name: `Cluster-${(customId ?? uuidv4()).slice(0, 6)}` },
+          ],
         })),
+
       updateCluster: (id, newName) =>
         set((state) => ({
           clusters: state.clusters.map((c) => (c.id === id ? { ...c, name: newName } : c)),
