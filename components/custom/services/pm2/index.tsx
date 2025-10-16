@@ -15,8 +15,9 @@ import {
   RocketLaunchIcon,
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PM2DefaultButton from './components/button/default';
+import PM2ExecutedLogs from './components/logs/default';
 import { IEventResponsePM2ActionResult, IPM2Service } from './types';
 
 interface PM2ServiceProps {
@@ -48,6 +49,7 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState<number | null>(null);
+  const [logs, setLogs] = useState<Record<string, string[]>>({});
 
   const latestMetrics = useMemo(() => agent?.metricsHistory?.at(-1), [agent.metricsHistory]);
   const liveServices = latestMetrics?.pm2Services?.services ?? [];
@@ -73,6 +75,15 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
 
   const handleAgentReboot = (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    const confirmed = window.confirm(
+      `⚠️ Are you sure you want to reboot agent "${
+        agent.name || agent.id
+      }"?\n\nThis will immediately restart the underlying server process and disconnect all running PM2 services.`,
+    );
+
+    if (!confirmed) return;
+
     emit(`reboot:${agent.clusterId}:${agent.id}`, '');
   };
 
@@ -82,7 +93,15 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
     callback: useCallback((payload: IEventResponsePM2ActionResult) => {
       console.log(payload);
 
-      const { serviceName, action, success } = payload;
+      const { serviceName, action, success, output } = payload;
+
+      // Append output logs if any
+      if (output) {
+        setLogs((prev) => ({
+          ...prev,
+          [serviceName]: [...(prev[serviceName] || []), ...(Array.isArray(output) ? output : [String(output)])],
+        }));
+      }
 
       if (success) {
         const flag = ACTION_FLAGS[action as keyof typeof ACTION_FLAGS];
@@ -178,86 +197,86 @@ export default function PM2Service({ agent }: PM2ServiceProps) {
                     : 'text-yellow-500 italic';
 
                 return (
-                  <div
-                    key={name}
-                    className='flex items-center justify-between px-4 py-2 border border-gray-100 rounded-lg hover:bg-gray-50 transition'
-                  >
-                    <div className='flex flex-col'>
-                      <span className='text-sm font-medium text-gray-800'>{name}</span>
-                      <span className={`text-xs ${statusColor}`}>{renderStatus}</span>
+                  <div key={name}>
+                    <div className='flex items-center justify-between px-4 py-2 border border-gray-100 rounded-tr rounded-tl'>
+                      <div className='flex flex-col'>
+                        <span className='text-sm font-medium text-gray-800'>{name}</span>
+                        <span className={`text-xs ${statusColor}`}>{renderStatus}</span>
+                      </div>
+
+                      <div className='flex gap-1.5'>
+                        {/* Restart */}
+                        <PM2DefaultButton
+                          icon={
+                            isRestarting ? (
+                              <ArrowPathIcon className='w-4 h-4 animate-spin text-gray-400' />
+                            ) : (
+                              <ArrowPathIcon className='w-4 h-4' />
+                            )
+                          }
+                          label={isRestarting ? 'Restarting...' : 'Restart'}
+                          disabled={isRestarting || status === 'stopped'}
+                          onClick={() => handleServiceAction(name, 'restart')}
+                        />
+
+                        {/* Start */}
+                        <PM2DefaultButton
+                          icon={
+                            isStarting ? (
+                              <ArrowPathIcon className='w-4 h-4 animate-spin text-gray-400' />
+                            ) : (
+                              <PlayIcon className='w-4 h-4' />
+                            )
+                          }
+                          label={isStarting ? 'Starting...' : 'Start'}
+                          disabled={isStarting || status === 'online'}
+                          onClick={() => handleServiceAction(name, 'start')}
+                        />
+
+                        {/* Stop */}
+                        <PM2DefaultButton
+                          icon={
+                            isStopping ? (
+                              <ArrowPathIcon className='w-4 h-4 animate-spin text-gray-400' />
+                            ) : (
+                              <PauseIcon className='w-4 h-4' />
+                            )
+                          }
+                          label={isStopping ? 'Stopping...' : 'Stop'}
+                          disabled={isStopping || status === 'stopped'}
+                          onClick={() => handleServiceAction(name, 'stop')}
+                        />
+
+                        {/* Deploy */}
+                        <PM2DefaultButton
+                          icon={
+                            isDeploying ? (
+                              <ArrowPathIcon className='w-4 h-4 animate-spin text-gray-400' />
+                            ) : (
+                              <RocketLaunchIcon className='w-4 h-4' />
+                            )
+                          }
+                          label={isDeploying ? 'Deploying...' : 'Deploy'}
+                          disabled={isDeploying}
+                          onClick={() => handleServiceAction(name, 'deploy')}
+                        />
+
+                        {/* Rollback */}
+                        <PM2DefaultButton
+                          icon={
+                            isRollbacking ? (
+                              <ArrowPathIcon className='w-4 h-4 animate-spin text-gray-400' />
+                            ) : (
+                              <ArrowUturnLeftIcon className='w-4 h-4' />
+                            )
+                          }
+                          label={isRollbacking ? 'Rolling back...' : 'Rollback'}
+                          disabled={isRollbacking}
+                          onClick={() => handleServiceAction(name, 'rollback')}
+                        />
+                      </div>
                     </div>
-
-                    <div className='flex gap-1.5'>
-                      {/* Restart */}
-                      <PM2DefaultButton
-                        icon={
-                          isRestarting ? (
-                            <ArrowPathIcon className='w-4 h-4 animate-spin text-gray-400' />
-                          ) : (
-                            <ArrowPathIcon className='w-4 h-4' />
-                          )
-                        }
-                        label={isRestarting ? 'Restarting...' : 'Restart'}
-                        disabled={isRestarting || status === 'stopped'}
-                        onClick={() => handleServiceAction(name, 'restart')}
-                      />
-
-                      {/* Start */}
-                      <PM2DefaultButton
-                        icon={
-                          isStarting ? (
-                            <ArrowPathIcon className='w-4 h-4 animate-spin text-gray-400' />
-                          ) : (
-                            <PlayIcon className='w-4 h-4' />
-                          )
-                        }
-                        label={isStarting ? 'Starting...' : 'Start'}
-                        disabled={isStarting || status === 'online'}
-                        onClick={() => handleServiceAction(name, 'start')}
-                      />
-
-                      {/* Stop */}
-                      <PM2DefaultButton
-                        icon={
-                          isStopping ? (
-                            <ArrowPathIcon className='w-4 h-4 animate-spin text-gray-400' />
-                          ) : (
-                            <PauseIcon className='w-4 h-4' />
-                          )
-                        }
-                        label={isStopping ? 'Stopping...' : 'Stop'}
-                        disabled={isStopping || status === 'stopped'}
-                        onClick={() => handleServiceAction(name, 'stop')}
-                      />
-
-                      {/* Deploy */}
-                      <PM2DefaultButton
-                        icon={
-                          isDeploying ? (
-                            <ArrowPathIcon className='w-4 h-4 animate-spin text-gray-400' />
-                          ) : (
-                            <RocketLaunchIcon className='w-4 h-4' />
-                          )
-                        }
-                        label={isDeploying ? 'Deploying...' : 'Deploy'}
-                        disabled={isDeploying}
-                        onClick={() => handleServiceAction(name, 'deploy')}
-                      />
-
-                      {/* Rollback */}
-                      <PM2DefaultButton
-                        icon={
-                          isRollbacking ? (
-                            <ArrowPathIcon className='w-4 h-4 animate-spin text-gray-400' />
-                          ) : (
-                            <ArrowUturnLeftIcon className='w-4 h-4' />
-                          )
-                        }
-                        label={isRollbacking ? 'Rolling back...' : 'Rollback'}
-                        disabled={isRollbacking}
-                        onClick={() => handleServiceAction(name, 'rollback')}
-                      />
-                    </div>
+                    <PM2ExecutedLogs serviceName={name} logs={logs[name] || []} />
                   </div>
                 );
               })}
