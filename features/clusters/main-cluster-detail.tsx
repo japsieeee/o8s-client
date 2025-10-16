@@ -31,9 +31,11 @@ export default function MainClusterDetail({ clusterId, clusterName }: IMainClust
     const query = searchQuery.trim().toLowerCase();
     if (!query) return agents;
     return agents.filter(
-      (agent) => agent.name?.toLowerCase().includes(query) || agent.id?.toLowerCase().includes(query),
+      (agent) =>
+        agent.name?.toLowerCase().includes(query) ||
+        (agent.id?.toLowerCase().includes(query) && agent.clusterId === clusterId),
     );
-  }, [agents, searchQuery]);
+  }, [agents, searchQuery, clusterId]);
 
   return (
     <main className='max-w-5xl mx-auto px-6 py-8 space-y-8'>
